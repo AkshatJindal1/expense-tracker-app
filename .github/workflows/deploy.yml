@@ -7,24 +7,21 @@ on:
     branches:
       - main
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   deploy:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # 1. Checks out your repository
+      # 1. Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Safely injects the Firebase config
+      # 2. Replaces the placeholder in your HTML with the secret config
       - name: Add Firebase Config
-        # Pass the secret as an environment variable to avoid syntax issues
-        env:
-          FIREBASE_CONFIG_SECRET: ${{ secrets.FIREBASE_CONFIG }}
-        run: |
-          # Use Node.js to correctly evaluate the JS object and convert it to a valid JSON string
-          CONFIG_JSON_STRING=$(node -e "console.log(JSON.stringify($FIREBASE_CONFIG_SECRET))")
-          sed -i "s|'__FIREBASE_CONFIG_JSON_PLACEHOLDER__'|${CONFIG_JSON_STRING}|g" index.html
+        run: sed -i "s|__FIREBASE_CONFIG__|${{ secrets.FIREBASE_CONFIG }}|g" index.html
 
       # 3. Deploys the code to Firebase Hosting
       - name: Deploy to Firebase
