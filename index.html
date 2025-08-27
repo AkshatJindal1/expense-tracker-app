@@ -1472,18 +1472,8 @@
             id: doc.id,
             ...doc.data(),
           }));
-          if (allAccounts.length === 0) {
-            const defaultAccounts = [
-              { name: "Bank", type: "Bank" },
-              { name: "Credit Card", type: "Credit Card" },
-              { name: "Wallet", type: "Wallet" },
-              { name: "Splitwise", type: "Splitwise" },
-            ];
-            defaultAccounts.forEach((acc) => addDoc(accRef, acc));
-          } else {
             renderAccounts(allAccounts);
             renderBalances(allTransactions, allAccounts);
-          }
         });
 
         if (categoriesUnsubscribe) categoriesUnsubscribe();
@@ -1493,21 +1483,7 @@
             id: doc.id,
             ...doc.data(),
           }));
-          if (allCategories.length === 0) {
-            const defaultCategories = [
-              "Food",
-              "Groceries",
-              "Transport",
-              "Bills",
-              "Shopping",
-              "Entertainment",
-            ];
-            defaultCategories.forEach((cat) =>
-              addDoc(catRef, { name: cat, transactionType: "Expense" })
-            );
-          } else {
-            renderCategories(allCategories);
-          }
+          renderCategories(allCategories);
         });
       }
 
