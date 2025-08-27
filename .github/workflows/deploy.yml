@@ -16,10 +16,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Safely converts the secret to a single-line JSON string and replaces the placeholder
+      # 2. Safely injects the Firebase config
       - name: Add Firebase Config
+        # Pass the secret as an environment variable to avoid syntax issues
+        env:
+          FIREBASE_CONFIG_SECRET: ${{ secrets.FIREBASE_CONFIG }}
         run: |
-          CONFIG_JSON_STRING=$(node -e "console.log(JSON.stringify(${{ secrets.FIREBASE_CONFIG }}))")
+          # Use Node.js to correctly evaluate the JS object and convert it to a valid JSON string
+          CONFIG_JSON_STRING=$(node -e "console.log(JSON.stringify($FIREBASE_CONFIG_SECRET))")
           sed -i "s|'__FIREBASE_CONFIG_JSON_PLACEHOLDER__'|${CONFIG_JSON_STRING}|g" index.html
 
       # 3. Deploys the code to Firebase Hosting
