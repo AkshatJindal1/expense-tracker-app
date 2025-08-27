@@ -1082,7 +1082,7 @@
         deleteDoc,
       } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-      const firebaseConfig = JSON.parse('__FIREBASE_CONFIG_JSON_PLACEHOLDER__');
+      const firebaseConfig = __FIREBASE_CONFIG__;
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
