@@ -1,0 +1,3144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" href="/assets/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <link rel="manifest" href="/assets/manifest.json" />
+    <title>Cloud Expense Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background-color: #f8f9fa;
+      }
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .nav-btn.active {
+        color: #0b57d0;
+      }
+      .fab {
+        background-color: #0b57d0;
+        color: white;
+        border-radius: 1rem;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+      .fab:active {
+        transform: scale(0.95);
+      }
+      .save-fab,
+      .page-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background-color: #1a73e8;
+      }
+      .nav-fab {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .balance-detail-row,
+      .summary-detail-row {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+      }
+      .balance-detail-row.expanded,
+      .summary-detail-row.expanded {
+        max-height: 500px;
+      }
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, visibility 0.3s;
+      }
+      /* Set specific z-index for modals */
+      #filter-modal {
+        z-index: 50;
+      }
+      #selection-modal {
+        z-index: 60;
+      }
+      #confirmation-modal {
+        z-index: 70;
+      }
+      #error-snackbar {
+        z-index: 100;
+      }
+
+      .modal-overlay.visible {
+        opacity: 1;
+        visibility: visible;
+      }
+      .bottom-sheet {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-radius: 1.5rem 1.5rem 0 0;
+        padding: 1rem;
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+      .modal-overlay.visible .bottom-sheet {
+        transform: translateY(0);
+      }
+      .selection-input,
+      .filter-input,
+      .date-time-input {
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      input[type="date"]:not(.has-value):before {
+        content: attr(placeholder);
+        color: #5f6368;
+      }
+      .form-row {
+        display: flex;
+        align-items: center;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+      }
+      .form-row .material-symbols-outlined {
+        color: #5f6368;
+        margin-right: 1rem;
+      }
+      .form-row .form-label {
+        font-weight: 400;
+        color: #3c4043;
+      }
+      .form-row .form-value {
+        margin-left: auto;
+        color: #5f6368;
+        font-weight: 400;
+      }
+      .floating-label-container {
+        position: relative;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        padding-top: 1.25rem;
+        padding-bottom: 0.5rem;
+        padding-left: 3.25rem;
+      }
+      .floating-label {
+        position: absolute;
+        left: 3.25rem;
+        top: 0.9rem;
+        color: #5f6368;
+        transition: all 0.2s ease;
+        pointer-events: none;
+      }
+      .floating-input {
+        background: transparent;
+        border: none;
+        outline: none;
+        width: 100%;
+        font-size: 1.125rem;
+      }
+      .floating-input:focus + .floating-label,
+      .floating-input:not(:placeholder-shown) + .floating-label {
+        top: 0.25rem;
+        font-size: 0.75rem;
+        color: #0b57d0;
+      }
+      .icon-prefix {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #5f6368;
+      }
+      .summary-tab,
+      .tx-type-tab {
+        border-bottom: 2px solid transparent;
+      }
+      .summary-tab.active,
+      .tx-type-tab.active {
+        border-color: #0b57d0;
+        color: #0b57d0;
+      }
+      .transaction-card,
+      .account-card,
+      .category-card {
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .m3-switch {
+        position: relative;
+        display: inline-block;
+        width: 52px;
+        height: 32px;
+      }
+      .m3-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .m3-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #e0e0e0;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+      .m3-slider:before {
+        position: absolute;
+        content: "";
+        height: 24px;
+        width: 24px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+      input:checked + .m3-slider {
+        background-color: #0b57d0;
+      }
+      input:checked + .m3-slider:before {
+        transform: translateX(20px);
+      }
+      .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 16px;
+        height: 32px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid #747775;
+        color: #444746;
+        background-color: #fff;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+      .filter-chip.selected {
+        background-color: #d3e4ff;
+        border-color: transparent;
+        color: #001c38;
+      }
+      .filter-chip .material-symbols-outlined {
+        font-size: 18px;
+        margin-right: 8px;
+      }
+      .selection-card {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.75rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+      }
+      .selection-card:hover {
+        background-color: #f5f5f5;
+      }
+      .selection-card.selected {
+        background-color: #e3f2fd;
+        border-color: #0b57d0;
+      }
+      .selection-card-main {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #3c4043;
+      }
+      .selection-card.selected .selection-card-main {
+        color: #0b57d0;
+      }
+      .selection-card-sub {
+        font-size: 0.875rem;
+        color: #5f6368;
+      }
+      /* New styles for the error snackbar */
+      #error-snackbar.visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      /* Styles for multi-select */
+      .selecting .transaction-card,
+      .selecting .account-card,
+      .selecting .category-card {
+        cursor: pointer;
+      }
+      .transaction-card.selected,
+      .account-card.selected,
+      .category-card.selected {
+        background-color: #e3f2fd;
+        border-color: #0b57d0;
+      }
+      .selection-indicator {
+        display: none;
+        margin-right: 12px;
+        color: #0b57d0;
+        font-size: 24px;
+      }
+      .selecting .selection-indicator {
+        display: block;
+      }
+      /* New styles for sticky headers */
+      .sticky-top-container {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa; /* Match body background */
+        padding-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body class="pb-20">
+    <!-- Login Screen -->
+    <div
+      id="login-screen"
+      class="page active flex justify-center items-center h-screen"
+    >
+      <div class="text-center p-8 bg-white rounded-lg shadow-md">
+        <h1 class="text-2xl font-medium text-gray-800 mb-2">Expense Tracker</h1>
+        <p class="text-gray-600 mb-6">Sign in with Google to sync your data.</p>
+        <button
+          id="google-signin-btn"
+          class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium py-2 px-4 rounded-full flex items-center justify-center w-full"
+        >
+          <svg class="w-5 h-5 mr-2" viewBox="0 0 48 48">
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            ></path>
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.42-4.55H24v8.51h12.8c-.57 3.02-2.31 5.45-4.92 7.18l7.98 6.19c4.63-4.28 7.34-10.42 7.34-17.33z"
+            ></path>
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            ></path>
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.98-6.19c-2.11 1.45-4.82 2.3-7.91 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            ></path>
+            <path fill="none" d="M0 0h48v48H0z"></path>
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+    </div>
+
+    <!-- Main App Content -->
+    <div id="app-content" class="hidden">
+      <!-- Home Page -->
+      <div id="page-home" class="page p-4">
+        <header class="mb-6">
+          <h1
+            id="dashboard-title"
+            class="text-2xl font-medium text-gray-800 truncate"
+          ></h1>
+        </header>
+
+        <div
+          id="dashboard-summary"
+          class="bg-white p-4 rounded-lg shadow-sm mb-6 space-y-2"
+        ></div>
+
+        <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <h2 class="text-base font-medium mb-3 text-gray-700">
+            Current Balances
+          </h2>
+          <div id="balances" class="space-y-2"></div>
+        </div>
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-base font-medium text-gray-700">
+              Recent Transactions
+            </h2>
+            <button id="see-more-btn" class="text-sm font-medium text-blue-600">
+              See All
+            </button>
+          </div>
+          <div id="recent-transactions" class="space-y-3"></div>
+        </div>
+      </div>
+
+      <!-- All Transactions Page -->
+      <div id="page-transactions" class="page">
+        <div class="sticky-top-container pt-4 px-4">
+          <div
+            id="transactions-header"
+            class="flex items-center justify-between"
+          >
+            <!-- Default Header -->
+            <div class="flex items-center default-header-content flex-grow">
+              <button class="back-btn material-symbols-outlined mr-2">
+                arrow_back
+              </button>
+              <h1 class="text-2xl font-medium text-gray-800">
+                All Transactions
+              </h1>
+            </div>
+            <!-- Selection Mode Header -->
+            <div
+              class="hidden selection-header-content w-full flex items-center justify-between"
+            >
+              <button class="cancel-selection-btn material-symbols-outlined">
+                close
+              </button>
+              <span class="selection-count font-medium"></span>
+              <button
+                class="bulk-delete-btn material-symbols-outlined text-red-600"
+                disabled
+              >
+                delete
+              </button>
+            </div>
+            <button
+              id="select-transactions-btn"
+              class="p-2 material-symbols-outlined default-header-content"
+            >
+              select
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2 mt-4">
+            <div class="flex-grow relative">
+              <span
+                class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                >search</span
+              >
+              <input
+                type="text"
+                id="search-input"
+                class="w-full bg-white rounded-lg p-3 pl-10 shadow-sm"
+                placeholder="Search..."
+              />
+            </div>
+            <button
+              id="open-filter-btn"
+              class="p-3 bg-white rounded-lg shadow-sm"
+            >
+              <span class="material-symbols-outlined">filter_list</span>
+            </button>
+            <button
+              id="open-sort-btn"
+              class="p-3 bg-white rounded-lg shadow-sm"
+            >
+              <span class="material-symbols-outlined">sort</span>
+            </button>
+          </div>
+        </div>
+        <div id="all-transactions-list" class="space-y-4 px-4 pb-4"></div>
+      </div>
+
+      <!-- Analytics Page -->
+      <div id="page-monthly-summary" class="page p-4">
+        <div class="flex items-center mb-4">
+          <button class="back-btn material-symbols-outlined mr-2">
+            arrow_back
+          </button>
+          <h1 class="text-2xl font-medium text-gray-800">Analytics</h1>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-white p-4 rounded-lg shadow-sm text-center">
+            <p class="text-sm text-gray-500">Avg. Daily Spend</p>
+            <p id="avg-daily-spend" class="text-lg font-medium text-gray-800">
+              ₹0.00
+            </p>
+          </div>
+          <div class="bg-white p-4 rounded-lg shadow-sm text-center">
+            <p class="text-sm text-gray-500">Avg. Transaction</p>
+            <p id="avg-tx-spend" class="text-lg font-medium text-gray-800">
+              ₹0.00
+            </p>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <h2 class="text-base font-medium mb-3 text-gray-700">
+            Month-on-Month Spending
+          </h2>
+          <canvas id="monthly-chart"></canvas>
+        </div>
+        <div id="pie-chart-container" class="bg-white p-4 rounded-lg shadow-sm">
+          <h2
+            id="pie-chart-title"
+            class="text-base font-medium mb-3 text-gray-700"
+          ></h2>
+          <div class="md:flex">
+            <div class="md:w-1/2">
+              <canvas id="category-pie-chart"></canvas>
+            </div>
+            <div
+              id="pie-chart-legend"
+              class="md:w-1/2 mt-4 md:mt-0 md:pl-4"
+            ></div>
+          </div>
+        </div>
+        <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+          <h2 class="text-base font-medium mb-3 text-gray-700">
+            This Month's Spending by Category
+          </h2>
+          <div id="category-summary-list"></div>
+        </div>
+      </div>
+
+      <!-- Accounts Page -->
+      <div id="page-accounts" class="page">
+        <div class="sticky-top-container pt-4 px-4">
+          <div
+            id="accounts-header"
+            class="flex items-center justify-between mb-4"
+          >
+            <!-- Default Header -->
+            <div class="flex items-center default-header-content flex-grow">
+              <button class="back-btn material-symbols-outlined mr-2">
+                arrow_back
+              </button>
+              <h1 class="text-2xl font-medium text-gray-800">Accounts</h1>
+            </div>
+            <!-- Selection Mode Header -->
+            <div
+              class="hidden selection-header-content w-full flex items-center justify-between"
+            >
+              <button class="cancel-selection-btn material-symbols-outlined">
+                close
+              </button>
+              <span class="selection-count font-medium"></span>
+              <button
+                class="bulk-delete-btn material-symbols-outlined text-red-600"
+                disabled
+              >
+                delete
+              </button>
+            </div>
+            <button
+              id="select-accounts-btn"
+              class="p-2 material-symbols-outlined default-header-content"
+            >
+              select
+            </button>
+          </div>
+        </div>
+        <div id="accounts-list" class="space-y-4 mb-6 px-4"></div>
+        <button id="add-account-fab" class="fab page-fab">
+          <span class="material-symbols-outlined">add</span>
+        </button>
+      </div>
+
+      <!-- More Page -->
+      <div id="page-more" class="page p-4">
+        <h1 class="text-2xl font-medium text-gray-800 mb-4">More Options</h1>
+        <div class="space-y-3">
+          <button
+            id="accounts-btn"
+            class="w-full text-left bg-white p-4 rounded-lg shadow-sm flex items-center"
+          >
+            <span class="material-symbols-outlined mr-3"
+              >account_balance_wallet</span
+            >Manage Accounts
+          </button>
+          <button
+            id="categories-btn"
+            class="w-full text-left bg-white p-4 rounded-lg shadow-sm flex items-center"
+          >
+            <span class="material-symbols-outlined mr-3">category</span>Manage
+            Categories
+          </button>
+          <button
+            id="adjustment-btn"
+            class="w-full text-left bg-white p-4 rounded-lg shadow-sm flex items-center"
+          >
+            <span class="material-symbols-outlined mr-3">tune</span>Adjust
+            Balances
+          </button>
+          <button
+            id="sign-out-btn"
+            class="w-full text-left bg-white p-4 rounded-lg shadow-sm flex items-center text-red-600"
+          >
+            <span class="material-symbols-outlined mr-3">logout</span>Sign Out
+          </button>
+        </div>
+      </div>
+
+      <!-- Categories Page -->
+      <div id="page-categories" class="page">
+        <div class="sticky-top-container pt-4 px-4">
+          <div
+            id="categories-header"
+            class="flex items-center justify-between mb-4"
+          >
+            <!-- Default Header -->
+            <div class="flex items-center default-header-content flex-grow">
+              <button class="back-btn material-symbols-outlined mr-2">
+                arrow_back
+              </button>
+              <h1 class="text-2xl font-medium text-gray-800">Categories</h1>
+            </div>
+            <!-- Selection Mode Header -->
+            <div
+              class="hidden selection-header-content w-full flex items-center justify-between"
+            >
+              <button class="cancel-selection-btn material-symbols-outlined">
+                close
+              </button>
+              <span class="selection-count font-medium"></span>
+              <button
+                class="bulk-delete-btn material-symbols-outlined text-red-600"
+                disabled
+              >
+                delete
+              </button>
+            </div>
+            <button
+              id="select-categories-btn"
+              class="p-2 material-symbols-outlined default-header-content"
+            >
+              select
+            </button>
+          </div>
+        </div>
+        <div id="categories-list" class="space-y-4 mb-6 px-4"></div>
+        <button id="add-category-fab" class="fab page-fab">
+          <span class="material-symbols-outlined">add</span>
+        </button>
+      </div>
+
+      <!-- Adjustment Page -->
+      <div id="page-adjustment" class="page p-4">
+        <div class="flex items-center mb-6">
+          <button class="back-btn material-symbols-outlined mr-2">
+            arrow_back
+          </button>
+          <h1 class="text-2xl font-medium text-gray-800">Adjust Balance</h1>
+        </div>
+        <div class="space-y-4">
+          <div id="adj-account-selector" class="selection-input">
+            <span>Select Account to Adjust</span
+            ><span class="material-symbols-outlined">expand_more</span>
+          </div>
+          <div class="bg-white p-4 rounded-lg shadow-sm space-y-4">
+            <div>
+              <label class="text-sm text-gray-500">Balance in App</label>
+              <p id="adj-app-balance" class="text-base">₹0.00</p>
+            </div>
+            <div>
+              <label for="adj-actual-balance" class="text-sm text-gray-500"
+                >Actual Balance</label
+              ><input
+                type="number"
+                id="adj-actual-balance"
+                class="w-full bg-gray-50 border-gray-300 rounded-lg p-3 mt-1"
+                placeholder="Enter actual balance"
+              />
+            </div>
+            <div>
+              <label class="text-sm text-gray-500">Difference</label>
+              <p id="adj-difference" class="text-base font-medium">₹0.00</p>
+            </div>
+          </div>
+          <button
+            id="save-adjustment-btn"
+            class="w-full bg-blue-600 text-white font-medium p-3 rounded-lg disabled:bg-gray-400"
+            disabled
+          >
+            Save Adjustment
+          </button>
+        </div>
+      </div>
+
+      <!-- Add/Edit Transaction Page -->
+      <div id="page-add-transaction" class="page p-4">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center">
+            <button
+              id="back-from-tx-btn"
+              class="material-symbols-outlined mr-2"
+            >
+              arrow_back
+            </button>
+            <h1
+              id="transaction-page-title"
+              class="text-2xl font-medium text-gray-800"
+            >
+              Add Transaction
+            </h1>
+          </div>
+          <button
+            id="delete-tx-btn"
+            class="hidden text-red-600 material-symbols-outlined"
+          >
+            delete
+          </button>
+        </div>
+
+        <div class="flex justify-around border-b mb-4">
+          <button
+            class="tx-type-tab flex-1 pb-2 font-normal active"
+            data-type="Expense"
+          >
+            Expense
+          </button>
+          <button
+            class="tx-type-tab flex-1 pb-2 font-normal"
+            data-type="Income"
+          >
+            Income
+          </button>
+          <button
+            class="tx-type-tab flex-1 pb-2 font-normal"
+            data-type="Transfer"
+          >
+            Transfer
+          </button>
+        </div>
+
+        <form id="transaction-form" class="space-y-4">
+          <div class="floating-label-container">
+            <span class="icon-prefix font-medium text-lg">₹</span
+            ><input
+              type="number"
+              step="0.01"
+              id="tx-amount"
+              class="floating-input"
+              placeholder=" "
+              required
+            /><label for="tx-amount" class="floating-label">Amount</label>
+          </div>
+          <div id="tx-category-selector" class="form-row" data-value="">
+            <span class="material-symbols-outlined">category</span
+            ><span class="form-label">Category</span
+            ><span class="form-value">Select Category</span>
+          </div>
+          <div id="tx-source-container" class="form-row" data-value="">
+            <span class="material-symbols-outlined">call_made</span
+            ><span class="form-label">Source</span
+            ><span class="form-value">Select Source</span>
+          </div>
+          <div
+            id="tx-destination-container"
+            class="form-row hidden"
+            data-value=""
+          >
+            <span class="material-symbols-outlined">call_received</span
+            ><span class="form-label">Destination</span
+            ><span class="form-value">Select Destination</span>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="date-time-input">
+              <span class="material-symbols-outlined mr-2">calendar_month</span
+              ><input
+                type="date"
+                id="tx-date"
+                class="bg-transparent outline-none w-full"
+              />
+            </div>
+            <div class="date-time-input">
+              <span class="material-symbols-outlined mr-2">schedule</span
+              ><input
+                type="time"
+                id="tx-time"
+                class="bg-transparent outline-none w-full"
+              />
+            </div>
+          </div>
+          <div>
+            <label class="text-sm font-normal text-gray-700 mb-1">Notes</label>
+            <div class="form-row p-0">
+              <span class="material-symbols-outlined p-3">edit_note</span
+              ><textarea
+                id="tx-notes"
+                class="w-full bg-transparent p-3 outline-none"
+                placeholder="Add a note..."
+              ></textarea>
+            </div>
+          </div>
+
+          <div
+            id="tx-add-to-splitwise-container"
+            class="flex items-center justify-between p-2"
+          >
+            <span class="text-sm">Add to Splitwise</span>
+            <label class="m3-switch"
+              ><input type="checkbox" id="tx-split" /><span
+                class="m3-slider"
+              ></span
+            ></label>
+          </div>
+          <div id="tx-split-amount-container" class="hidden">
+            <input
+              type="number"
+              step="0.01"
+              id="tx-split-amount"
+              class="w-full bg-gray-50 border-gray-300 rounded-lg p-3"
+              placeholder="Amount for others (on Splitwise)"
+            />
+          </div>
+        </form>
+        <button id="save-tx-btn" class="fab save-fab">
+          <span class="material-symbols-outlined">save</span>
+        </button>
+      </div>
+
+      <!-- Add/Edit Account Page -->
+      <div id="page-add-account" class="page p-4">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center">
+            <button class="back-btn material-symbols-outlined mr-2">
+              arrow_back
+            </button>
+            <h1
+              id="account-page-title"
+              class="text-2xl font-medium text-gray-800"
+            >
+              Add Account
+            </h1>
+          </div>
+          <button
+            id="delete-account-btn"
+            class="hidden text-red-600 material-symbols-outlined"
+          >
+            delete
+          </button>
+        </div>
+        <form id="account-form" class="space-y-4">
+          <div class="form-row p-0">
+            <span class="material-symbols-outlined p-3">badge</span>
+            <textarea
+              id="account-name"
+              class="w-full bg-transparent p-3 outline-none"
+              placeholder="Account Name..."
+              required
+            ></textarea>
+          </div>
+          <div id="account-type-selector" class="form-row" data-value="">
+            <span class="material-symbols-outlined">category</span>
+            <span class="form-label">Type</span>
+            <span class="form-value">Select Type</span>
+          </div>
+        </form>
+        <button id="save-account-btn" class="fab save-fab">
+          <span class="material-symbols-outlined">save</span>
+        </button>
+      </div>
+
+      <!-- Add/Edit Category Page -->
+      <div id="page-add-category" class="page p-4">
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center">
+            <button class="back-btn material-symbols-outlined mr-2">
+              arrow_back
+            </button>
+            <h1
+              id="category-page-title"
+              class="text-2xl font-medium text-gray-800"
+            >
+              Add Category
+            </h1>
+          </div>
+          <button
+            id="delete-category-btn"
+            class="hidden text-red-600 material-symbols-outlined"
+          >
+            delete
+          </button>
+        </div>
+        <form id="category-form" class="space-y-4">
+          <div class="form-row p-0">
+            <span class="material-symbols-outlined p-3">label</span>
+            <textarea
+              id="category-name"
+              class="w-full bg-transparent p-3 outline-none"
+              placeholder="Category Name..."
+              required
+            ></textarea>
+          </div>
+          <div id="txn-type-selector" class="form-row" data-value="">
+            <span class="material-symbols-outlined">category</span>
+            <span class="form-label">Transaction Type</span>
+            <span class="form-value">Select Transaction Type</span>
+          </div>
+        </form>
+        <button id="save-category-btn" class="fab save-fab">
+          <span class="material-symbols-outlined">save</span>
+        </button>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <nav
+        id="bottom-nav"
+        class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around max-w-lg mx-auto"
+      >
+        <button data-page="home" class="nav-btn flex-1 py-3 text-center active">
+          <span class="material-symbols-outlined">home</span
+          ><span class="block text-xs">Home</span>
+        </button>
+        <button
+          data-page="transactions"
+          class="nav-btn flex-1 py-3 text-center"
+        >
+          <span class="material-symbols-outlined">receipt_long</span
+          ><span class="block text-xs">History</span>
+        </button>
+        <div class="w-16 h-16 flex justify-center items-center">
+          <button id="add-tx-page-btn" class="fab nav-fab -mt-8">
+            <span class="material-symbols-outlined">add</span>
+          </button>
+        </div>
+        <button
+          data-page="monthly-summary"
+          class="nav-btn flex-1 py-3 text-center"
+        >
+          <span class="material-symbols-outlined">analytics</span
+          ><span class="block text-xs">Analytics</span>
+        </button>
+        <button data-page="more" class="nav-btn flex-1 py-3 text-center">
+          <span class="material-symbols-outlined">more_horiz</span
+          ><span class="block text-xs">More</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Selection Bottom Sheet -->
+    <div id="selection-modal" class="modal-overlay">
+      <div class="bottom-sheet">
+        <div class="flex justify-between items-center mb-4">
+          <h3
+            id="selection-title"
+            class="text-lg font-medium text-center flex-grow"
+          ></h3>
+          <button
+            id="selection-done-btn"
+            class="hidden font-medium text-blue-600"
+          >
+            Done
+          </button>
+        </div>
+        <div id="selection-list" class="grid gap-2"></div>
+      </div>
+    </div>
+
+    <!-- Filter Bottom Sheet -->
+    <div id="filter-modal" class="modal-overlay">
+      <div class="bottom-sheet">
+        <h3 class="text-lg font-medium mb-4 text-center">Filters</h3>
+        <div class="space-y-4">
+          <!-- Date Filters -->
+          <div class="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              onfocus="(this.type='date')"
+              onblur="(this.type='text')"
+              id="start-date-filter"
+              class="w-full filter-input"
+              placeholder="Start Date"
+            />
+            <input
+              type="text"
+              onfocus="(this.type='date')"
+              onblur="(this.type='text')"
+              id="end-date-filter"
+              class="w-full filter-input"
+              placeholder="End Date"
+            />
+          </div>
+
+          <!-- Type Filter -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-sm font-medium text-gray-600">Type</label>
+              <button
+                id="clear-type-filter"
+                class="text-xs text-blue-600 font-medium"
+              >
+                Clear
+              </button>
+            </div>
+            <div id="type-filter-chips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+
+          <!-- Account Filter -->
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-sm font-medium text-gray-600">Account</label>
+              <button
+                id="clear-account-filter"
+                class="text-xs text-blue-600 font-medium"
+              >
+                Clear
+              </button>
+            </div>
+            <div id="account-filter-chips" class="flex flex-wrap gap-1.5"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal-overlay">
+      <div class="bg-white rounded-lg shadow-xl p-6 w-11/12 max-w-sm">
+        <h3
+          id="confirmation-title"
+          class="text-lg font-medium text-gray-800 mb-4"
+        >
+          Are you sure?
+        </h3>
+        <p id="confirmation-message" class="text-sm text-gray-600 mb-6"></p>
+        <div class="flex justify-end space-x-3">
+          <button
+            id="confirm-cancel-btn"
+            class="px-4 py-2 rounded-md text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200"
+          >
+            Cancel
+          </button>
+          <button
+            id="confirm-ok-btn"
+            class="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Message Snackbar -->
+    <div
+      id="error-snackbar"
+      class="fixed bottom-24 left-1/2 bg-red-600 text-white py-2 px-4 rounded-lg shadow-lg text-sm opacity-0 transition-opacity duration-300 transform -translate-x-1/2 translate-y-4"
+    >
+      An error occurred.
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+      import {
+        getAuth,
+        onAuthStateChanged,
+        GoogleAuthProvider,
+        signInWithPopup,
+        signOut,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        query,
+        onSnapshot,
+        serverTimestamp,
+        orderBy,
+        doc,
+        updateDoc,
+        deleteDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      const firebaseConfig = __FIREBASE_CONFIG__;
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      let currentUser = null;
+      let transactionsUnsubscribe = null;
+      let accountsUnsubscribe = null;
+      let categoriesUnsubscribe = null;
+      let allTransactions = [];
+      let allAccounts = [];
+      let allCategories = [];
+      let editingTransactionId = null;
+      let editingAccountId = null;
+      let editingCategoryId = null;
+      let currentBalances = {};
+      let filters = {
+        searchTerm: "",
+        startDate: "",
+        endDate: "",
+        type: [],
+        account: [],
+      };
+      let currentSort = { by: "date", order: "desc" };
+      let monthlyChart = null;
+      let categoryPieChart = null;
+      let currentTxType = "Expense";
+
+      let typeChipsExpanded = false;
+      let accountChipsExpanded = false;
+
+      // --- NEW: State for multi-selection ---
+      let selectionState = {
+        page: null, // 'transactions', 'accounts', or 'categories'
+        active: false,
+        selectedIds: new Set(),
+      };
+
+      const pages = document.querySelectorAll(".page");
+      const navButtons = document.querySelectorAll(".nav-btn");
+      const loginScreen = document.getElementById("login-screen");
+      const appContent = document.getElementById("app-content");
+      const bottomNav = document.getElementById("bottom-nav");
+
+      // --- Custom Messaging Functions ---
+
+      /**
+       * Shows a snackbar with an error message.
+       * @param {string} message The error message to display.
+       */
+      function showError(message) {
+        const snackbar = document.getElementById("error-snackbar");
+        if (!snackbar) return;
+        snackbar.textContent = message;
+        snackbar.classList.add("visible");
+
+        // Hide after 3 seconds
+        setTimeout(() => {
+          snackbar.classList.remove("visible");
+        }, 3000);
+      }
+
+      const confirmationModal = document.getElementById("confirmation-modal");
+      const confirmationMessage = document.getElementById(
+        "confirmation-message"
+      );
+      const confirmOkBtn = document.getElementById("confirm-ok-btn");
+      const confirmCancelBtn = document.getElementById("confirm-cancel-btn");
+
+      let confirmResolve = null;
+
+      /**
+       * Shows a confirmation modal and returns a promise that resolves with the user's choice.
+       * @param {string} message The message to display in the confirmation dialog.
+       * @returns {Promise<boolean>} A promise that resolves to true if confirmed, false otherwise.
+       */
+      function showConfirmation(message) {
+        return new Promise((resolve) => {
+          confirmResolve = resolve;
+          confirmationMessage.textContent = message;
+          confirmationModal.classList.add("visible");
+        });
+      }
+
+      confirmOkBtn.addEventListener("click", () => {
+        confirmationModal.classList.remove("visible");
+        if (confirmResolve) confirmResolve(true);
+      });
+
+      [confirmCancelBtn, confirmationModal].forEach((el) => {
+        el.addEventListener("click", (e) => {
+          if (e.target !== el) return;
+          confirmationModal.classList.remove("visible");
+          if (confirmResolve) confirmResolve(false);
+        });
+      });
+
+      // --- NAVIGATION REWORK ---
+      // This new system uses the browser's History API to manage navigation.
+      // This makes swipe-to-go-back and the native back button work correctly.
+
+      /**
+       * Handles the visual display of a page.
+       * It toggles the 'active' class and resets forms when leaving certain pages.
+       * @param {string} pageId The ID of the page to show (e.g., 'home', 'transactions').
+       */
+      function showPage(pageId) {
+        if (!pageId) return;
+
+        const fromPage = [...pages].find((p) => p.classList.contains("active"));
+        const fromPageId = fromPage ? fromPage.id.replace("page-", "") : null;
+
+        // Reset forms when navigating away from them
+        if (fromPageId && fromPageId !== pageId) {
+          switch (fromPageId) {
+            case "add-transaction":
+              resetTransactionForm();
+              break;
+            case "add-account":
+              resetAccountForm();
+              break;
+            case "add-category":
+              resetCategoryForm();
+              break;
+            case "adjustment":
+              resetAdjustmentForm();
+              break;
+            case "transactions":
+            case "accounts":
+            case "categories":
+              // Exit selection mode when leaving list pages
+              if (selectionState.active) {
+                toggleSelectionMode(fromPageId, true);
+              }
+              if (fromPageId === "transactions") {
+                resetTransactionsPage();
+              }
+              break;
+          }
+        }
+
+        // Show/hide the correct page
+        pages.forEach((p) =>
+          p.classList.toggle("active", p.id === `page-${pageId}`)
+        );
+
+        // Update the active state of the bottom navigation buttons
+        navButtons.forEach((b) =>
+          b.classList.toggle("active", b.dataset.page === pageId)
+        );
+
+        // Show or hide the bottom navigation bar based on the current page
+        const pagesWithNav = [
+          "home",
+          "transactions",
+          "monthly-summary",
+          "more",
+        ];
+        const shouldShowNav = pagesWithNav.includes(pageId);
+        bottomNav.classList.toggle("hidden", !shouldShowNav);
+        document.body.classList.toggle("pb-20", shouldShowNav);
+      }
+
+      /**
+       * Navigates to a new page, pushing its state to the browser history.
+       * @param {string} pageId The ID of the page to navigate to.
+       */
+      function navigateTo(pageId) {
+        const currentHash = location.hash.substring(1);
+        if (pageId !== currentHash) {
+          // Add a new entry to the browser's history
+          history.pushState({ page: pageId }, "", `#${pageId}`);
+          // Update the displayed page
+          showPage(pageId);
+        }
+      }
+
+      /**
+       * Navigates to a new page, replacing the current history entry.
+       * This is useful for actions like saving a form, where you don't want the form page in the back history.
+       * @param {string} pageId The ID of the page to navigate to.
+       */
+      function navigateAndReplace(pageId) {
+        history.replaceState({ page: pageId }, "", `#${pageId}`);
+        showPage(pageId);
+      }
+
+      /**
+       * Listens for the 'popstate' event, which is triggered by browser back/forward actions
+       * (including swipe gestures on mobile).
+       */
+      window.addEventListener("popstate", (e) => {
+        if (e.state && e.state.page) {
+          // If a state exists, show the corresponding page
+          showPage(e.state.page);
+        } else {
+          // Fallback for the initial state if it's null
+          showPage("home");
+        }
+      });
+
+      // --- Form Reset Functions ---
+      function resetTransactionForm() {
+        editingTransactionId = null;
+        document.getElementById("transaction-page-title").textContent =
+          "Add Transaction";
+        document.getElementById("delete-tx-btn").classList.add("hidden");
+        document.getElementById("transaction-form").reset();
+
+        const categorySelector = document.getElementById(
+          "tx-category-selector"
+        );
+        categorySelector.dataset.value = "";
+        categorySelector.querySelector(".form-value").textContent =
+          "Select Category";
+
+        const sourceContainer = document.getElementById("tx-source-container");
+        sourceContainer.dataset.value = "";
+        sourceContainer.querySelector(".form-value").textContent =
+          "Select Source";
+
+        const destContainer = document.getElementById(
+          "tx-destination-container"
+        );
+        destContainer.dataset.value = "";
+        destContainer.querySelector(".form-value").textContent =
+          "Select Destination";
+
+        const now = new Date();
+        document.getElementById("tx-date").value = now
+          .toISOString()
+          .slice(0, 10);
+        document.getElementById("tx-time").value = now
+          .toTimeString()
+          .slice(0, 5);
+
+        document
+          .getElementById("tx-split-amount-container")
+          .classList.add("hidden");
+        updateTxTypeUI("Expense");
+      }
+
+      function resetAccountForm() {
+        editingAccountId = null;
+        document.getElementById("account-page-title").textContent =
+          "Add Account";
+        document.getElementById("delete-account-btn").classList.add("hidden");
+        document.getElementById("account-form").reset();
+        const accountTypeSelector = document.getElementById(
+          "account-type-selector"
+        );
+        accountTypeSelector.dataset.value = "";
+        accountTypeSelector.querySelector(".form-value").textContent =
+          "Select Type";
+      }
+
+      function resetCategoryForm() {
+        editingCategoryId = null;
+        document.getElementById("category-page-title").textContent =
+          "Add Category";
+        const txnTypeSelector = document.getElementById("txn-type-selector");
+        txnTypeSelector.dataset.value = "";
+        txnTypeSelector.querySelector(".form-value").textContent =
+          "Select Transaction Type";
+        document.getElementById("delete-category-btn").classList.add("hidden");
+        document.getElementById("category-form").reset();
+      }
+
+      function resetAdjustmentForm() {
+        selectedAdjAccount = null;
+        document
+          .getElementById("adj-account-selector")
+          .querySelector("span").textContent = "Select Account to Adjust";
+        document.getElementById("adj-app-balance").textContent = "₹0.00";
+        document.getElementById("adj-actual-balance").value = "";
+        document.getElementById("adj-difference").textContent = "₹0.00";
+        document.getElementById("save-adjustment-btn").disabled = true;
+      }
+
+      function resetTransactionsPage() {
+        document.getElementById("search-input").value = "";
+        filters = {
+          searchTerm: "",
+          startDate: "",
+          endDate: "",
+          type: [],
+          accounts: [],
+        };
+        currentSort = { by: "date", order: "desc" };
+        document.getElementById("start-date-filter").value = "";
+        document.getElementById("end-date-filter").value = "";
+        typeChipsExpanded = false;
+        accountChipsExpanded = false;
+        renderAllTransactions(allTransactions);
+      }
+
+      // --- Initial Setup & Auth ---
+      navButtons.forEach((b) =>
+        b.addEventListener("click", () => navigateTo(b.dataset.page))
+      );
+      document
+        .getElementById("see-more-btn")
+        .addEventListener("click", () => navigateTo("transactions"));
+      document
+        .getElementById("adjustment-btn")
+        .addEventListener("click", () => navigateTo("adjustment"));
+      document
+        .getElementById("categories-btn")
+        .addEventListener("click", () => navigateTo("categories"));
+      document
+        .getElementById("accounts-btn")
+        .addEventListener("click", () => navigateTo("accounts"));
+      document
+        .getElementById("add-tx-page-btn")
+        .addEventListener("click", () => {
+          resetTransactionForm();
+          navigateTo("add-transaction");
+        });
+
+      // UPDATED: All back buttons now use history.back() to trigger the 'popstate' event.
+      document
+        .querySelectorAll(".back-btn, #back-from-tx-btn")
+        .forEach((btn) => {
+          btn.addEventListener("click", () => history.back());
+        });
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          currentUser = user;
+          const name = user.displayName || user.email.split("@")[0];
+          document.getElementById(
+            "dashboard-title"
+          ).textContent = `Hello, ${name}`;
+          loginScreen.classList.remove("active");
+          loginScreen.classList.add("hidden");
+          appContent.classList.remove("hidden");
+
+          // --- History API Setup on Login ---
+          // Determine the initial page (e.g., from a bookmarked URL hash) or default to 'home'
+          const initialPage = location.hash
+            ? location.hash.substring(1)
+            : "home";
+          // Use replaceState to set the initial history entry without creating a back-able state.
+          history.replaceState({ page: initialPage }, "", `#${initialPage}`);
+          // Show the initial page.
+          showPage(initialPage);
+
+          setupListeners();
+        } else {
+          currentUser = null;
+          if (transactionsUnsubscribe) transactionsUnsubscribe();
+          if (accountsUnsubscribe) accountsUnsubscribe();
+          if (categoriesUnsubscribe) categoriesUnsubscribe();
+          appContent.classList.add("hidden");
+          loginScreen.classList.remove("hidden");
+          loginScreen.classList.add("active");
+          pages.forEach((p) => p.classList.remove("active"));
+        }
+      });
+      document
+        .getElementById("google-signin-btn")
+        .addEventListener("click", () =>
+          signInWithPopup(auth, new GoogleAuthProvider())
+        );
+      document
+        .getElementById("sign-out-btn")
+        .addEventListener("click", () => signOut(auth));
+
+      // --- Firestore Listeners ---
+      function setupListeners() {
+        if (transactionsUnsubscribe) transactionsUnsubscribe();
+        const txRef = collection(db, "users", currentUser.uid, "transactions");
+        const txQuery = query(txRef, orderBy("date", "desc"));
+        transactionsUnsubscribe = onSnapshot(txQuery, (snapshot) => {
+          allTransactions = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          renderAll(allTransactions, allAccounts);
+        });
+
+        if (accountsUnsubscribe) accountsUnsubscribe();
+        const accRef = collection(db, "users", currentUser.uid, "accounts");
+        accountsUnsubscribe = onSnapshot(accRef, (snapshot) => {
+          allAccounts = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          if (allAccounts.length === 0) {
+            const defaultAccounts = [
+              { name: "Bank", type: "Bank" },
+              { name: "Credit Card", type: "Credit Card" },
+              { name: "Wallet", type: "Wallet" },
+              { name: "Splitwise", type: "Splitwise" },
+            ];
+            defaultAccounts.forEach((acc) => addDoc(accRef, acc));
+          } else {
+            renderAccounts(allAccounts);
+            renderBalances(allTransactions, allAccounts);
+          }
+        });
+
+        if (categoriesUnsubscribe) categoriesUnsubscribe();
+        const catRef = collection(db, "users", currentUser.uid, "categories");
+        categoriesUnsubscribe = onSnapshot(catRef, (snapshot) => {
+          allCategories = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          if (allCategories.length === 0) {
+            const defaultCategories = [
+              "Food",
+              "Groceries",
+              "Transport",
+              "Bills",
+              "Shopping",
+              "Entertainment",
+            ];
+            defaultCategories.forEach((cat) =>
+              addDoc(catRef, { name: cat, transactionType: "Expense" })
+            );
+          } else {
+            renderCategories(allCategories);
+          }
+        });
+      }
+
+      // --- Main Render Functions ---
+      function renderAll(transactions, accounts) {
+        renderDashboardSummary(transactions);
+        renderBalances(transactions, accounts);
+        renderRecentTransactions(transactions);
+        renderAllTransactions(transactions);
+        renderMonthlySummaryPage(transactions);
+      }
+
+      function renderDashboardSummary(transactions) {
+        const toEpochSeconds = (date) => Math.floor(date.getTime() / 1000);
+        const now = new Date();
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+        const epochStartToday = toEpochSeconds(todayStart);
+        const epochEndToday = toEpochSeconds(todayEnd);
+
+        const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        const epochStartWeek = toEpochSeconds(weekStart);
+        const epochEndWeek = toEpochSeconds(weekEnd);
+
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+        const epochStartMonth = toEpochSeconds(monthStart);
+        const epochEndMonth = toEpochSeconds(monthEnd);
+
+        const todayTx = transactions.filter(
+          (t) =>
+            t.date &&
+            t.date.seconds >= epochStartToday &&
+            t.date.seconds <= epochEndToday
+        );
+        const weekTx = transactions.filter(
+          (t) =>
+            t.date &&
+            t.date.seconds >= epochStartWeek &&
+            t.date.seconds <= epochEndWeek
+        );
+        const monthTx = transactions.filter(
+          (t) =>
+            t.date &&
+            t.date.seconds >= epochStartMonth &&
+            t.date.seconds <= epochEndMonth
+        );
+
+        const calcTotals = (txs) => ({
+          income: txs
+            .filter((t) => t.type === "Income")
+            .reduce((sum, t) => sum + t.amount, 0),
+          spending: txs
+            .filter((t) => t.type === "Expense")
+            .reduce((sum, t) => sum + (t.amount - (t.splitAmount || 0)), 0),
+        });
+
+        const todayTotals = calcTotals(todayTx);
+        const weekTotals = calcTotals(weekTx);
+        const monthTotals = calcTotals(monthTx);
+
+        const summaryContainer = document.getElementById("dashboard-summary");
+        summaryContainer.innerHTML = `
+                                <div>
+                                    <div class="summary-row flex items-center justify-between p-2 rounded-md hover:bg-gray-100 cursor-pointer" data-type="Income">
+                                        <div class="flex items-center"><span class="material-symbols-outlined mr-3 text-green-600">arrow_downward</span><span class="font-medium">Income</span></div>
+                                        <div class="font-medium text-green-600">${monthTotals.income.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</div>
+                                    </div>
+                                    <div id="detail-Income" class="summary-detail-row pl-4 border-l-2 ml-4">
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">Today</span><span class="font-normal">${todayTotals.income.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">This Week</span><span class="font-normal">${weekTotals.income.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">This Month</span><span class="font-normal">${monthTotals.income.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="summary-row flex items-center justify-between p-2 rounded-md hover:bg-gray-100 cursor-pointer" data-type="Spending">
+                                        <div class="flex items-center"><span class="material-symbols-outlined mr-3 text-red-600">arrow_upward</span><span class="font-medium">Spending</span></div>
+                                        <div class="font-medium text-red-600">${monthTotals.spending.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</div>
+                                    </div>
+                                    <div id="detail-Spending" class="summary-detail-row pl-4 border-l-2 ml-4">
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">Today</span><span class="font-normal">${todayTotals.spending.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">This Week</span><span class="font-normal">${weekTotals.spending.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                        <div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">This Month</span><span class="font-normal">${monthTotals.spending.toLocaleString(
+                                          "en-IN",
+                                          { style: "currency", currency: "INR" }
+                                        )}</span></div>
+                                    </div>
+                                </div>
+                                `;
+      }
+
+      const accountTypeIcons = {
+        Bank: "account_balance",
+        "Credit Card": "credit_card",
+        Wallet: "account_balance_wallet",
+        Splitwise: "receipt_long",
+      };
+
+      function renderBalances(transactions, accounts) {
+        if (!accounts || accounts.length === 0) return;
+        const balances = {};
+        accounts.forEach((acc) => {
+          balances[acc.name] = 0;
+        });
+
+        transactions.forEach((tx) => {
+          if (tx.type === "Transfer") {
+            if (balances.hasOwnProperty(tx.source))
+              balances[tx.source] -= tx.amount;
+            if (balances.hasOwnProperty(tx.destination))
+              balances[tx.destination] += tx.amount;
+          }
+          if (tx.type === "Income") {
+            if (balances.hasOwnProperty(tx.destination))
+              balances[tx.destination] += tx.amount;
+          }
+          if (tx.type === "Expense") {
+            if (balances.hasOwnProperty(tx.source))
+              balances[tx.source] -= tx.amount;
+          }
+          if (tx.splitAmount > 0) {
+            const splitwiseAccount = accounts.find(
+              (a) => a.type === "Splitwise"
+            );
+            if (
+              splitwiseAccount &&
+              balances.hasOwnProperty(splitwiseAccount.name)
+            ) {
+              balances[splitwiseAccount.name] += tx.splitAmount;
+            }
+          }
+        });
+
+        currentBalances = balances;
+
+        const groupedBalances = {};
+        accounts.forEach((acc) => {
+          if (!groupedBalances[acc.type])
+            groupedBalances[acc.type] = { total: 0, accounts: [] };
+          const accountBalance = balances[acc.name] || 0;
+          groupedBalances[acc.type].total += accountBalance;
+          groupedBalances[acc.type].accounts.push({
+            name: acc.name,
+            balance: accountBalance,
+          });
+        });
+
+        const balancesContainer = document.getElementById("balances");
+        balancesContainer.innerHTML = Object.keys(groupedBalances)
+          .map((type) => {
+            const group = groupedBalances[type];
+            const detailsHTML = group.accounts
+              .map(
+                (acc) =>
+                  `<div class="flex justify-between items-center text-sm ml-8 py-1"><span class="text-gray-600">${
+                    acc.name
+                  }</span><span class="font-normal">${acc.balance.toLocaleString(
+                    "en-IN",
+                    { style: "currency", currency: "INR" }
+                  )}</span></div>`
+              )
+              .join("");
+            return `<div><div class="balance-summary-row flex items-center justify-between p-2 rounded-md hover:bg-gray-100 cursor-pointer" data-type="${type.replace(
+              /\s+/g,
+              ""
+            )}"><div class="flex items-center"><span class="material-symbols-outlined mr-3 text-gray-500">${
+              accountTypeIcons[type] || "credit_score"
+            }</span><span class="font-medium">${type}</span></div><div class="font-medium ${
+              group.total < 0 ? "text-red-600" : "text-gray-800"
+            }">${group.total.toLocaleString("en-IN", {
+              style: "currency",
+              currency: "INR",
+            })}</div></div><div id="detail-${type.replace(
+              /\s+/g,
+              ""
+            )}" class="balance-detail-row pl-4 border-l-2 ml-4">${detailsHTML}</div></div>`;
+          })
+          .join("");
+      }
+
+      function renderRecentTransactions(transactions) {
+        document.getElementById("recent-transactions").innerHTML = transactions
+          .filter((tx) => !tx.category.includes("Adjustment"))
+          .slice(0, 3)
+          .map((tx) => {
+            return transactionItemHTML(tx, false); // No selection on home page
+          })
+          .join("");
+      }
+
+      /**
+       * Formats a date for display as a group header.
+       * @param {Date} date The date to format.
+       * @returns {string} The formatted date string (e.g., "Today", "Yesterday", "August 23, 2025").
+       */
+      function formatDateGroup(date) {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        today.setHours(0, 0, 0, 0);
+        yesterday.setHours(0, 0, 0, 0);
+        date.setHours(0, 0, 0, 0);
+
+        if (date.getTime() === today.getTime()) {
+          return "Today";
+        } else if (date.getTime() === yesterday.getTime()) {
+          return "Yesterday";
+        } else {
+          return date.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+        }
+      }
+
+      function renderAllTransactions(transactions) {
+        const listContainer = document.getElementById("all-transactions-list");
+        const filtered = filterTransactions(transactions, filters);
+        const sorted = sortTransactions(filtered);
+
+        if (sorted.length === 0) {
+          listContainer.innerHTML =
+            '<p class="text-center text-gray-500 mt-8">No transactions found.</p>';
+          listContainer.classList.remove("selecting");
+          return;
+        }
+
+        let html = "";
+        if (currentSort.by === "date" || currentSort.by === "category") {
+          const groupKeyFn =
+            currentSort.by === "date"
+              ? (tx) => {
+                  const d = tx.date.toDate();
+                  // Use an unambiguous, easily parseable format for the key. YYYY/MM/DD is safe.
+                  return `${d.getFullYear()}/${
+                    d.getMonth() + 1
+                  }/${d.getDate()}`;
+                }
+              : (tx) => tx.category || "Uncategorized";
+
+          const grouped = sorted.reduce((acc, tx) => {
+            const key = groupKeyFn(tx);
+            if (!acc[key]) {
+              acc[key] = [];
+            }
+            acc[key].push(tx);
+            return acc;
+          }, {});
+
+          for (const groupName in grouped) {
+            const groupTransactions = grouped[groupName];
+            const headerText =
+              currentSort.by === "date"
+                ? formatDateGroup(new Date(groupName))
+                : groupName;
+
+            html += `<div>
+                           <h3 class="text-sm font-medium text-gray-500 mt-4 mb-2">${headerText}</h3>
+                           <div class="space-y-3">
+                             ${groupTransactions
+                               .map((tx) => transactionItemHTML(tx, true))
+                               .join("")}
+                           </div>
+                         </div>`;
+          }
+        } else {
+          // Sort by amount
+          html = `<div class="space-y-3">${sorted
+            .map((tx) => transactionItemHTML(tx, true))
+            .join("")}</div>`;
+        }
+
+        listContainer.innerHTML = html;
+        listContainer.classList.toggle(
+          "selecting",
+          selectionState.active && selectionState.page === "transactions"
+        );
+      }
+
+      function transactionItemHTML(tx, allowSelection = false) {
+        const isSelecting =
+          allowSelection &&
+          selectionState.active &&
+          selectionState.page === "transactions";
+        const isSelected = isSelecting && selectionState.selectedIds.has(tx.id);
+        const selectingClass = isSelecting ? "selecting" : "";
+        const selectedClass = isSelected ? "selected" : "";
+
+        const amountColor =
+          tx.type === "Income"
+            ? "text-green-600"
+            : tx.type === "Transfer"
+            ? "text-gray-500"
+            : "text-red-600";
+        const sign =
+          tx.type === "Income" ? "+" : tx.type === "Transfer" ? "" : "-";
+
+        let detailHTML = "";
+        if (tx.type === "Transfer") {
+          detailHTML = `<p class="text-xs text-gray-500">${tx.source} → ${tx.destination}</p>`;
+        } else if (tx.type === "Expense") {
+          detailHTML = `<p class="text-xs text-gray-500">${tx.source}</p>`;
+        } else {
+          detailHTML = `<p class="text-xs text-gray-500">${tx.destination}</p>`;
+        }
+
+        if (tx.splitAmount > 0) {
+          const personalAmount = tx.amount - tx.splitAmount;
+          detailHTML += `<p class="text-xs text-gray-400">Self: ${personalAmount.toLocaleString(
+            "en-IN",
+            { style: "currency", currency: "INR" }
+          )} | Split: ${tx.splitAmount.toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR",
+          })}</p>`;
+        }
+
+        return `<div class="transaction-card bg-white p-3 rounded-lg shadow-sm flex items-center ${selectingClass} ${selectedClass}" data-id="${
+          tx.id
+        }">
+                    <div class="flex items-center flex-grow">
+                        <span class="selection-indicator material-symbols-outlined">
+                            ${
+                              isSelected
+                                ? "check_circle"
+                                : "radio_button_unchecked"
+                            }
+                        </span>
+                        <div class="flex-grow">
+                            <p class="font-normal">${
+                              tx.category || "Transaction"
+                            }</p>
+                            ${detailHTML}
+                            <p class="text-sm text-gray-400">${
+                              tx.date
+                                ? tx.date.toDate().toLocaleDateString()
+                                : "Pending"
+                            }</p>
+                        </div>
+                    </div>
+                    <p class="font-normal ${amountColor} ml-2">${sign} ${tx.amount.toLocaleString(
+          "en-IN",
+          { style: "currency", currency: "INR" }
+        )}</p>
+                </div>`;
+      }
+
+      function renderAccounts(accounts) {
+        const isSelecting =
+          selectionState.active && selectionState.page === "accounts";
+        const listContainer = document.getElementById("accounts-list");
+
+        const groupedAccounts = accounts.reduce((acc, account) => {
+          const { type } = account;
+          if (!acc[type]) {
+            acc[type] = [];
+          }
+          acc[type].push(account);
+          return acc;
+        }, {});
+
+        listContainer.innerHTML = Object.entries(groupedAccounts)
+          .sort(([typeA], [typeB]) => typeA.localeCompare(typeB))
+          .map(([type, accountsInGroup]) => {
+            const accountCardsHTML = accountsInGroup
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((acc) => {
+                const isSelected =
+                  isSelecting && selectionState.selectedIds.has(acc.id);
+                const selectedClass = isSelected ? "selected" : "";
+                return `<div class="account-card bg-white p-3 rounded-lg shadow-sm flex items-center ${selectedClass}" data-id="${
+                  acc.id
+                }">
+                        <span class="selection-indicator material-symbols-outlined">
+                            ${
+                              isSelected
+                                ? "check_circle"
+                                : "radio_button_unchecked"
+                            }
+                        </span>
+                        <div class="flex items-center flex-grow">
+                            <span class="material-symbols-outlined mr-3 text-gray-500">${
+                              accountTypeIcons[acc.type] || "credit_score"
+                            }</span>
+                            <div>
+                                <p class="font-normal">${acc.name}</p>
+                                <p class="text-xs text-gray-500">${acc.type}</p>
+                            </div>
+                        </div>
+                    </div>`;
+              })
+              .join("");
+            return `<div>
+                      <h3 class="text-sm font-medium text-gray-500 mt-4 mb-2">${type}</h3>
+                      <div class="space-y-3">${accountCardsHTML}</div>
+                    </div>`;
+          })
+          .join("");
+
+        listContainer.classList.toggle("selecting", isSelecting);
+      }
+
+      function renderCategories(categories) {
+        const isSelecting =
+          selectionState.active && selectionState.page === "categories";
+        const listContainer = document.getElementById("categories-list");
+
+        const groupedCategories = categories.reduce((acc, category) => {
+          const { transactionType } = category;
+          if (!acc[transactionType]) {
+            acc[transactionType] = [];
+          }
+          acc[transactionType].push(category);
+          return acc;
+        }, {});
+
+        const categoryOrder = ["Expense", "Income", "Transfer"];
+        listContainer.innerHTML = categoryOrder
+          .filter((type) => groupedCategories[type])
+          .map((type) => {
+            const categoriesInGroup = groupedCategories[type];
+            const categoryCardsHTML = categoriesInGroup
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((cat) => {
+                const isSelected =
+                  isSelecting && selectionState.selectedIds.has(cat.id);
+                const selectedClass = isSelected ? "selected" : "";
+                return `<div class="category-card bg-white p-3 rounded-lg shadow-sm flex items-center ${selectedClass}" data-id="${
+                  cat.id
+                }">
+                        <span class="selection-indicator material-symbols-outlined">
+                            ${
+                              isSelected
+                                ? "check_circle"
+                                : "radio_button_unchecked"
+                            }
+                        </span>
+                        <div class="flex-grow">
+                            <p class="font-normal">${cat.name}</p>
+                            <p class="text-xs text-gray-500">${
+                              cat.transactionType
+                            }</p>
+                        </div>
+                    </div>`;
+              })
+              .join("");
+            return `<div>
+                      <h3 class="text-sm font-medium text-gray-500 mt-4 mb-2">${type}</h3>
+                      <div class="space-y-3">${categoryCardsHTML}</div>
+                    </div>`;
+          })
+          .join("");
+
+        listContainer.classList.toggle("selecting", isSelecting);
+      }
+
+      // --- Form Submission & Editing Logic ---
+      document
+        .getElementById("save-tx-btn")
+        .addEventListener("click", async () => {
+          const dateVal = document.getElementById("tx-date").value;
+          const timeVal = document.getElementById("tx-time").value;
+
+          const txData = {
+            type: currentTxType,
+            date: new Date(`${dateVal}T${timeVal}`),
+            amount: parseFloat(document.getElementById("tx-amount").value),
+            category: document.getElementById("tx-category-selector").dataset
+              .value,
+            source:
+              currentTxType === "Income"
+                ? null
+                : document.getElementById("tx-source-container").dataset.value,
+            destination:
+              currentTxType === "Expense"
+                ? null
+                : document.getElementById("tx-destination-container").dataset
+                    .value,
+            notes: document.getElementById("tx-notes").value,
+            splitAmount: document.getElementById("tx-split").checked
+              ? parseFloat(document.getElementById("tx-split-amount").value) ||
+                0
+              : 0,
+          };
+
+          if (
+            !txData.amount ||
+            !txData.date ||
+            ((currentTxType === "Expense" || currentTxType === "Transfer") &&
+              !txData.source) ||
+            !txData.category ||
+            ((currentTxType === "Transfer" || currentTxType === "Income") &&
+              !txData.destination) ||
+            (currentTxType === "Transfer" &&
+              txData.source === txData.destination)
+          ) {
+            showError("Please fill all required fields correctly.");
+            return;
+          }
+
+          if (editingTransactionId) {
+            await updateDoc(
+              doc(
+                db,
+                "users",
+                currentUser.uid,
+                "transactions",
+                editingTransactionId
+              ),
+              txData
+            );
+          } else {
+            await addDoc(
+              collection(db, "users", currentUser.uid, "transactions"),
+              txData
+            );
+          }
+
+          history.back();
+        });
+
+      document.addEventListener("click", async (e) => {
+        // --- NEW: Handle selection clicks first ---
+        if (selectionState.active) {
+          const card = e.target.closest(
+            ".transaction-card, .account-card, .category-card"
+          );
+          if (card && card.closest(".selecting")) {
+            const id = card.dataset.id;
+            const indicator = card.querySelector(".selection-indicator");
+
+            if (selectionState.selectedIds.has(id)) {
+              selectionState.selectedIds.delete(id);
+              card.classList.remove("selected");
+              if (indicator) indicator.textContent = "radio_button_unchecked";
+            } else {
+              selectionState.selectedIds.add(id);
+              card.classList.add("selected");
+              if (indicator) indicator.textContent = "check_circle";
+            }
+            updateSelectionCount(selectionState.page);
+          }
+          return; // Prevent navigation when in selection mode
+        }
+
+        // --- Original click handlers for navigation/editing ---
+        const txCardTarget = e.target.closest(".transaction-card");
+        const accountCardTarget = e.target.closest(".account-card");
+        const categoryCardTarget = e.target.closest(".category-card");
+
+        if (txCardTarget) {
+          const id = txCardTarget.dataset.id;
+          const tx = allTransactions.find((t) => t.id === id);
+          editingTransactionId = id;
+          document.getElementById("transaction-page-title").textContent =
+            "Edit Transaction";
+          document.getElementById("delete-tx-btn").classList.remove("hidden");
+
+          updateTxTypeUI(tx.type);
+          currentTxType = tx.type;
+
+          const txDate = tx.date.toDate();
+          document.getElementById(
+            "tx-date"
+          ).value = `${txDate.getFullYear()}-${String(
+            txDate.getMonth() + 1
+          ).padStart(2, "0")}-${String(txDate.getDate()).padStart(2, "0")}`;
+          document.getElementById("tx-time").value = txDate
+            .toTimeString()
+            .slice(0, 5);
+
+          document.getElementById("tx-amount").value = tx.amount;
+
+          const categorySelector = document.getElementById(
+            "tx-category-selector"
+          );
+          categorySelector.dataset.value = tx.category;
+          categorySelector.querySelector(".form-value").textContent =
+            tx.category;
+
+          const sourceContainer = document.getElementById(
+            "tx-source-container"
+          );
+          const destContainer = document.getElementById(
+            "tx-destination-container"
+          );
+          destContainer.dataset.value = tx.destination;
+          destContainer.querySelector(".form-value").textContent =
+            tx.destination || "Select Destination";
+          sourceContainer.dataset.value = tx.source;
+          sourceContainer.querySelector(".form-value").textContent =
+            tx.source || "Select Source";
+
+          document.getElementById("tx-notes").value = tx.notes;
+          document.getElementById("tx-split").checked = tx.splitAmount > 0;
+          document.getElementById("tx-split-amount").value = tx.splitAmount;
+          document
+            .getElementById("tx-split-amount-container")
+            .classList.toggle("hidden", !(tx.splitAmount > 0));
+
+          navigateTo("add-transaction");
+          return;
+        }
+
+        if (accountCardTarget) {
+          const id = accountCardTarget.dataset.id;
+          const account = allAccounts.find((acc) => acc.id === id);
+          editingAccountId = id;
+          document.getElementById("account-page-title").textContent =
+            "Edit Account";
+          document
+            .getElementById("delete-account-btn")
+            .classList.remove("hidden");
+          document.getElementById("account-name").value = account.name;
+          const accountTypeSelector = document.getElementById(
+            "account-type-selector"
+          );
+          accountTypeSelector.dataset.value = account.type;
+          accountTypeSelector.querySelector(".form-value").textContent =
+            account.type;
+          navigateTo("add-account");
+          return;
+        }
+
+        if (categoryCardTarget) {
+          const id = categoryCardTarget.dataset.id;
+          const category = allCategories.find((cat) => cat.id === id);
+          editingCategoryId = id;
+          document.getElementById("category-page-title").textContent =
+            "Edit Category";
+          document
+            .getElementById("delete-category-btn")
+            .classList.remove("hidden");
+          document.getElementById("category-name").value = category.name;
+          const txnTypeSelector = document.getElementById("txn-type-selector");
+          txnTypeSelector.dataset.value = category.transactionType;
+          txnTypeSelector.querySelector(".form-value").textContent =
+            category.transactionType;
+          navigateTo("add-category");
+          return;
+        }
+
+        const summaryRow =
+          e.target.closest(".balance-summary-row") ||
+          e.target.closest(".summary-row");
+        if (summaryRow) {
+          const type = summaryRow.dataset.type;
+          document
+            .getElementById(`detail-${type}`)
+            .classList.toggle("expanded");
+        }
+      });
+
+      document
+        .getElementById("delete-tx-btn")
+        .addEventListener("click", async () => {
+          const confirmed = await showConfirmation(
+            "Delete this transaction? This action cannot be undone."
+          );
+          if (confirmed) {
+            await deleteDoc(
+              doc(
+                db,
+                "users",
+                currentUser.uid,
+                "transactions",
+                editingTransactionId
+              )
+            );
+            history.back();
+          }
+        });
+
+      document
+        .getElementById("save-account-btn")
+        .addEventListener("click", async () => {
+          const name = document.getElementById("account-name").value.trim();
+          const type = document.getElementById("account-type-selector").dataset
+            .value;
+          if (name && type) {
+            const data = { name, type };
+            if (editingAccountId) {
+              await updateDoc(
+                doc(db, "users", currentUser.uid, "accounts", editingAccountId),
+                data
+              );
+            } else {
+              await addDoc(
+                collection(db, "users", currentUser.uid, "accounts"),
+                data
+              );
+            }
+            history.back();
+          } else {
+            showError("Please provide both name and type for the account.");
+          }
+        });
+
+      document
+        .getElementById("save-category-btn")
+        .addEventListener("click", async () => {
+          const name = document.getElementById("category-name").value.trim();
+          const transactionType =
+            document.getElementById("txn-type-selector").dataset.value;
+          if (name && transactionType) {
+            const data = { name, transactionType };
+            if (editingCategoryId) {
+              await updateDoc(
+                doc(
+                  db,
+                  "users",
+                  currentUser.uid,
+                  "categories",
+                  editingCategoryId
+                ),
+                data
+              );
+            } else {
+              await addDoc(
+                collection(db, "users", currentUser.uid, "categories"),
+                data
+              );
+            }
+            history.back();
+          } else {
+            showError("Please provide both name and transaction type.");
+          }
+        });
+
+      document
+        .getElementById("delete-account-btn")
+        .addEventListener("click", async () => {
+          const confirmed = await showConfirmation(
+            "Delete this account? This cannot be undone."
+          );
+          if (confirmed) {
+            await deleteDoc(
+              doc(db, "users", currentUser.uid, "accounts", editingAccountId)
+            );
+            history.back();
+          }
+        });
+
+      document
+        .getElementById("delete-category-btn")
+        .addEventListener("click", async () => {
+          const confirmed = await showConfirmation(
+            "Delete this category? This cannot be undone."
+          );
+          if (confirmed) {
+            await deleteDoc(
+              doc(db, "users", currentUser.uid, "categories", editingCategoryId)
+            );
+            history.back();
+          }
+        });
+
+      document
+        .getElementById("add-account-fab")
+        .addEventListener("click", () => {
+          resetAccountForm();
+          navigateTo("add-account");
+        });
+
+      document
+        .getElementById("add-category-fab")
+        .addEventListener("click", () => {
+          resetCategoryForm();
+          navigateTo("add-category");
+        });
+
+      // --- Bottom Sheet Logic ---
+      const selectionModal = document.getElementById("selection-modal");
+      const selectionTitle = document.getElementById("selection-title");
+      const selectionList = document.getElementById("selection-list");
+      const selectionDoneBtn = document.getElementById("selection-done-btn");
+      let currentSelectionCallback;
+      let isMultiSelect = false;
+      let tempSelections = new Set();
+
+      function openSelectionSheet(
+        title,
+        items,
+        onSelect,
+        multiSelect = false,
+        preselected = []
+      ) {
+        selectionTitle.textContent = title;
+        isMultiSelect = multiSelect;
+        tempSelections = new Set(preselected);
+
+        selectionList.innerHTML = items
+          .map((item) => {
+            const value = typeof item === "object" ? item.value : item;
+            const subtext = typeof item === "object" ? item.subtext : null;
+            const isSelected = tempSelections.has(value);
+
+            const subtextHTML = subtext
+              ? `<span class="selection-card-sub">${subtext}</span>`
+              : "";
+
+            return `
+                        <div class="selection-card ${
+                          isSelected ? "selected" : ""
+                        }" data-value="${value}">
+                            <span class="selection-card-main">${value}</span>
+                            ${subtextHTML}
+                        </div>`;
+          })
+          .join("");
+
+        selectionDoneBtn.classList.toggle("hidden", !isMultiSelect);
+        currentSelectionCallback = onSelect;
+        selectionModal.classList.add("visible");
+      }
+
+      selectionModal.addEventListener("click", (e) => {
+        if (e.target === selectionModal) {
+          selectionModal.classList.remove("visible");
+        }
+      });
+
+      selectionDoneBtn.addEventListener("click", () => {
+        if (currentSelectionCallback) {
+          currentSelectionCallback(Array.from(tempSelections));
+        }
+        selectionModal.classList.remove("visible");
+      });
+
+      selectionList.addEventListener("click", (e) => {
+        const target = e.target.closest(".selection-card");
+        if (!target) return;
+
+        const value = target.dataset.value;
+        if (isMultiSelect) {
+          if (tempSelections.has(value)) {
+            tempSelections.delete(value);
+            target.classList.remove("selected");
+          } else {
+            tempSelections.add(value);
+            target.classList.add("selected");
+          }
+        } else {
+          if (currentSelectionCallback) {
+            currentSelectionCallback(value);
+          }
+          selectionModal.classList.remove("visible");
+        }
+      });
+
+      document.querySelectorAll(".tx-type-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          updateTxTypeUI(tab.dataset.type);
+        });
+      });
+
+      function updateTxTypeUI(type) {
+        currentTxType = type;
+        document
+          .querySelectorAll(".tx-type-tab")
+          .forEach((t) =>
+            t.classList.toggle("active", t.dataset.type === type)
+          );
+        const sourceContainer = document.getElementById("tx-source-container");
+        const destContainer = document.getElementById(
+          "tx-destination-container"
+        );
+        const addToSplitwiseContainer = document.getElementById(
+          "tx-add-to-splitwise-container"
+        );
+
+        sourceContainer.classList.toggle("hidden", type === "Income");
+        destContainer.classList.toggle("hidden", type === "Expense");
+        addToSplitwiseContainer.classList.toggle("hidden", type !== "Expense");
+      }
+
+      document
+        .getElementById("tx-category-selector")
+        .addEventListener("click", () => {
+          const items = allCategories
+            .filter((c) => c.transactionType === currentTxType)
+            .map((c) => ({ value: c.name }))
+            .sort((a, b) => a.value.localeCompare(b.value));
+
+          openSelectionSheet("Select Category", items, (value) => {
+            const selector = document.getElementById("tx-category-selector");
+            selector.dataset.value = value;
+            selector.querySelector(".form-value").textContent = value;
+          });
+        });
+
+      document
+        .getElementById("account-type-selector")
+        .addEventListener("click", () => {
+          const items = Object.keys(accountTypeIcons);
+          openSelectionSheet("Select Account Type", items, (value) => {
+            const selector = document.getElementById("account-type-selector");
+            selector.dataset.value = value;
+            selector.querySelector(".form-value").textContent = value;
+          });
+        });
+
+      document
+        .getElementById("txn-type-selector")
+        .addEventListener("click", () => {
+          const items = ["Expense", "Income", "Transfer"];
+          openSelectionSheet("Select Transaction Type", items, (value) => {
+            const selector = document.getElementById("txn-type-selector");
+            selector.dataset.value = value;
+            selector.querySelector(".form-value").textContent = value;
+          });
+        });
+
+      document
+        .getElementById("tx-source-container")
+        .addEventListener("click", () => {
+          const items = allAccounts
+            .map((a) => ({
+              value: a.name,
+              subtext: a.type,
+            }))
+            .sort((a, b) => {
+              const subtextCompare = a.subtext.localeCompare(b.subtext);
+              if (subtextCompare !== 0) {
+                return subtextCompare;
+              }
+              // If subtext is the same, sort by value
+              return a.value.localeCompare(b.value);
+            });
+          openSelectionSheet("Select Source", items, (value) => {
+            const selector = document.getElementById("tx-source-container");
+            selector.dataset.value = value;
+            selector.querySelector(".form-value").textContent = value;
+          });
+        });
+
+      document
+        .getElementById("tx-destination-container")
+        .addEventListener("click", () => {
+          const items = allAccounts
+            .map((a) => ({
+              value: a.name,
+              subtext: a.type,
+            }))
+            .sort((a, b) => {
+              const subtextCompare = a.subtext.localeCompare(b.subtext);
+              if (subtextCompare !== 0) {
+                return subtextCompare;
+              }
+              // If subtext is the same, sort by value
+              return a.value.localeCompare(b.value);
+            });
+          openSelectionSheet("Select Destination", items, (value) => {
+            const selector = document.getElementById(
+              "tx-destination-container"
+            );
+            selector.dataset.value = value;
+            selector.querySelector(".form-value").textContent = value;
+          });
+        });
+
+      document.getElementById("tx-split").addEventListener("change", (e) => {
+        document
+          .getElementById("tx-split-amount-container")
+          .classList.toggle("hidden", !e.target.checked);
+      });
+
+      // --- Adjustment Page Logic ---
+      const adjAccountSelector = document.getElementById(
+        "adj-account-selector"
+      );
+      const adjAppBalance = document.getElementById("adj-app-balance");
+      const adjActualBalance = document.getElementById("adj-actual-balance");
+      const adjDifference = document.getElementById("adj-difference");
+      const saveAdjBtn = document.getElementById("save-adjustment-btn");
+      let selectedAdjAccount = null;
+
+      adjAccountSelector.addEventListener("click", () => {
+        const items = allAccounts.map((a) => ({
+          value: a.name,
+          subtext: a.type,
+        }));
+        openSelectionSheet("Select Account", items, (value) => {
+          selectedAdjAccount = value;
+          adjAccountSelector.querySelector("span").textContent = value;
+          const appBalance = currentBalances[value] || 0;
+          adjAppBalance.textContent = appBalance.toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR",
+          });
+          adjActualBalance.value = "";
+          adjDifference.textContent = "₹0.00";
+          saveAdjBtn.disabled = true;
+        });
+      });
+
+      adjActualBalance.addEventListener("input", () => {
+        if (!selectedAdjAccount) return;
+        const appBalance = currentBalances[selectedAdjAccount] || 0;
+        const actualBalance = parseFloat(adjActualBalance.value) || 0;
+        const difference = actualBalance - appBalance;
+
+        adjDifference.textContent = difference.toLocaleString("en-IN", {
+          style: "currency",
+          currency: "INR",
+        });
+        adjDifference.classList.toggle("text-green-600", difference > 0);
+        adjDifference.classList.toggle("text-red-600", difference < 0);
+        saveAdjBtn.disabled = difference === 0;
+      });
+
+      saveAdjBtn.addEventListener("click", async () => {
+        const appBalance = currentBalances[selectedAdjAccount] || 0;
+        const actualBalance = parseFloat(adjActualBalance.value);
+        const difference = actualBalance - appBalance;
+
+        if (difference === 0 || !selectedAdjAccount) return;
+
+        const adjTx = {
+          type: difference > 0 ? "Income" : "Expense",
+          amount: Math.abs(difference),
+          category: difference > 0 ? "Income Adjustment" : "Expense Adjustment",
+          source: difference > 0 ? null : selectedAdjAccount,
+          destination: difference > 0 ? selectedAdjAccount : null,
+          notes: `Adjusted balance from ${appBalance.toFixed(
+            2
+          )} to ${actualBalance.toFixed(2)}.`,
+          splitAmount: 0,
+          date: serverTimestamp(),
+        };
+
+        await addDoc(
+          collection(db, "users", currentUser.uid, "transactions"),
+          adjTx
+        );
+        navigateAndReplace("home");
+      });
+
+      // --- Filter & Sort Logic ---
+      const filterModal = document.getElementById("filter-modal");
+      document
+        .getElementById("open-filter-btn")
+        .addEventListener("click", () => {
+          renderTypeFilterChips(false);
+          renderAccountFilterChips(false);
+          filterModal.classList.add("visible");
+        });
+
+      filterModal.addEventListener("click", (e) => {
+        if (e.target === filterModal) {
+          filterModal.classList.remove("visible");
+        }
+      });
+
+      function sortTransactions(transactions) {
+        const { by, order } = currentSort;
+        return [...transactions].sort((a, b) => {
+          let valA, valB;
+          switch (by) {
+            case "amount":
+              valA = a.amount;
+              valB = b.amount;
+              break;
+            case "category":
+              valA = a.category || "";
+              valB = b.category || "";
+              return order === "asc"
+                ? valA.localeCompare(valB)
+                : valB.localeCompare(valA);
+            case "date":
+            default:
+              valA = a.date.toDate();
+              valB = b.date.toDate();
+              break;
+          }
+          return order === "asc" ? valA - valB : valB - valA;
+        });
+      }
+
+      document.getElementById("open-sort-btn").addEventListener("click", () => {
+        const items = [
+          "Date (Newest First)",
+          "Date (Oldest First)",
+          "Amount (High to Low)",
+          "Amount (Low to High)",
+          "Category (A-Z)",
+          "Category (Z-A)",
+        ];
+        openSelectionSheet("Sort By", items, (value) => {
+          switch (value) {
+            case "Date (Newest First)":
+              currentSort = { by: "date", order: "desc" };
+              break;
+            case "Date (Oldest First)":
+              currentSort = { by: "date", order: "asc" };
+              break;
+            case "Amount (High to Low)":
+              currentSort = { by: "amount", order: "desc" };
+              break;
+            case "Amount (Low to High)":
+              currentSort = { by: "amount", order: "asc" };
+              break;
+            case "Category (A-Z)":
+              currentSort = { by: "category", order: "asc" };
+              break;
+            case "Category (Z-A)":
+              currentSort = { by: "category", order: "desc" };
+              break;
+          }
+          renderAllTransactions(allTransactions);
+        });
+      });
+
+      function filterTransactions(transactions, filters) {
+        return transactions.filter((tx) => {
+          // Match search terms (in category or notes).
+          const searchTermMatch =
+            !filters.searchTerm ||
+            (tx.category &&
+              tx.category
+                .toLowerCase()
+                .includes(filters.searchTerm.toLowerCase())) ||
+            (tx.notes &&
+              tx.notes
+                .toLowerCase()
+                .includes(filters.searchTerm.toLowerCase()));
+
+          // Match date range.
+          const txDate = tx.date.toDate();
+          const startDateMatch =
+            !filters.startDate || txDate >= new Date(filters.startDate);
+          const endDateMatch =
+            !filters.endDate ||
+            txDate <=
+              new Date(new Date(filters.endDate).setHours(23, 59, 59, 999));
+
+          // Match transaction type.
+          const typeMatch =
+            filters.type.length === 0 || filters.type.includes(tx.type);
+          
+          // Match account based on transaction type.
+          const accountMatch =
+            filters.account.length === 0 ||
+            filters.account.some((selectedAccount) => {
+              if (tx.type === "Expense") {
+                return tx.source === selectedAccount;
+              }
+              if (tx.type === "Income") {
+                return tx.destination === selectedAccount
+              }
+              if (tx.type === "Transfer") {
+                return (
+                  tx.source === selectedAccount ||
+                  tx.destination === selectedAccount
+                );
+              }
+              return false;
+            })
+
+          // Return true only if all conditions are met.
+          return (
+            searchTermMatch &&
+            startDateMatch &&
+            endDateMatch &&
+            typeMatch &&
+            accountMatch
+          );
+        });
+      }
+
+      document.getElementById("search-input").addEventListener("input", (e) => {
+        filters.searchTerm = e.target.value;
+        renderAllTransactions(allTransactions);
+      });
+      ["start-date-filter", "end-date-filter"].forEach((id) => {
+        document.getElementById(id).addEventListener("change", (e) => {
+          filters[id === "start-date-filter" ? "startDate" : "endDate"] =
+            e.target.value;
+          renderAllTransactions(allTransactions);
+        });
+      });
+
+      function renderFilterChips(
+        container,
+        allItems,
+        selectedItems,
+        onToggle,
+        onExpand,
+        expanded
+      ) {
+        container.innerHTML = "";
+        const itemsToShow =
+          expanded || allItems.length <= 3 ? allItems : allItems.slice(0, 3);
+
+        itemsToShow.forEach((item) => {
+          const chip = document.createElement("button");
+          chip.className = "filter-chip";
+          const isSelected = selectedItems.includes(item);
+          if (isSelected) {
+            chip.classList.add("selected");
+            chip.innerHTML = `<span class="material-symbols-outlined">done</span>${item}`;
+          } else {
+            chip.textContent = item;
+          }
+          chip.onclick = () => onToggle(item);
+          container.appendChild(chip);
+        });
+
+        if (allItems.length > 3 && !expanded) {
+          const moreChip = document.createElement("button");
+          moreChip.className = "filter-chip";
+          moreChip.textContent = "...";
+          moreChip.onclick = onExpand;
+          container.appendChild(moreChip);
+        }
+      }
+
+      function renderTypeFilterChips(expanded = typeChipsExpanded) {
+        const container = document.getElementById("type-filter-chips");
+        const allTypes = ["Expense", "Income", "Transfer"];
+        renderFilterChips(
+          container,
+          allTypes,
+          filters.type,
+          (type) => {
+            if (filters.type.includes(type)) {
+              filters.type = filters.type.filter((t) => t !== type);
+            } else {
+              filters.type.push(type);
+            }
+            renderTypeFilterChips(expanded);
+            renderAllTransactions(allTransactions);
+          },
+          () => {
+            typeChipsExpanded = true;
+            renderTypeFilterChips(true);
+          },
+          expanded
+        );
+      }
+
+      function renderAccountFilterChips(expanded = accountChipsExpanded) {
+        const container = document.getElementById("account-filter-chips");
+        const allAccount = allAccounts.map((a) => a.name);
+        renderFilterChips(
+          container,
+          allAccount,
+          filters.account,
+          (account) => {
+            if (filters.account.includes(account)) {
+              filters.account = filters.account.filter((a) => a !== account);
+            } else {
+              filters.account.push(account);
+            }
+            renderAccountFilterChips(expanded);
+            renderAllTransactions(allTransactions);
+          },
+          () => {
+            accountChipsExpanded = true;
+            renderAccountFilterChips(true);
+          },
+          expanded
+        );
+      }
+
+      document
+        .getElementById("clear-type-filter")
+        .addEventListener("click", () => {
+          filters.type = [];
+          renderTypeFilterChips(typeChipsExpanded);
+          renderAllTransactions(allTransactions);
+        });
+
+      document
+        .getElementById("clear-account-filter")
+        .addEventListener("click", () => {
+          filters.account = [];
+          renderAccountFilterChips(accountChipsExpanded);
+          renderAllTransactions(allTransactions);
+        });
+
+      // --- Analytics Page Logic ---
+      function renderMonthlySummaryPage(transactions) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const monthlyExpenses = transactions.filter(
+          (t) =>
+            t.date && t.date.toDate() >= startOfMonth && t.type === "Expense"
+        );
+
+        const totalMonthlySpend = monthlyExpenses.reduce(
+          (sum, tx) => sum + tx.amount - (tx.splitAmount || 0),
+          0
+        );
+        const avgDailySpend = totalMonthlySpend / now.getDate();
+        const monthlyExpensesWithoutAdjustment = monthlyExpenses.filter(
+          (t) => !t.category.includes("Adjustment")
+        );
+        const totalMonthlySpendWithoutAdjustment =
+          monthlyExpensesWithoutAdjustment.reduce(
+            (sum, tx) => sum + tx.amount - (tx.splitAmount || 0),
+            0
+          );
+        const avgTxSpend =
+          monthlyExpensesWithoutAdjustment.length > 0
+            ? totalMonthlySpendWithoutAdjustment /
+              monthlyExpensesWithoutAdjustment.length
+            : 0;
+
+        document.getElementById("avg-daily-spend").textContent =
+          avgDailySpend.toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR",
+          });
+        document.getElementById("avg-tx-spend").textContent =
+          avgTxSpend.toLocaleString("en-IN", {
+            style: "currency",
+            currency: "INR",
+          });
+
+        const categoryTotals = {};
+        monthlyExpenses.forEach((tx) => {
+          const category = tx.category || "Uncategorized";
+          if (!categoryTotals[category]) {
+            categoryTotals[category] = 0;
+          }
+          categoryTotals[category] += tx.amount - (tx.splitAmount || 0);
+        });
+
+        const sortedCategories = Object.entries(categoryTotals).sort(
+          (a, b) => b[1] - a[1]
+        );
+        document.getElementById("category-summary-list").innerHTML =
+          sortedCategories
+            .map(
+              ([name, total]) => `
+                                <div class="flex justify-between items-center py-2 border-b">
+                                    <span class="font-normal">${name}</span>
+                                    <span class="font-medium">${total.toLocaleString(
+                                      "en-IN",
+                                      {
+                                        style: "currency",
+                                        currency: "INR",
+                                      }
+                                    )}</span>
+                                </div>
+                            `
+            )
+            .join("");
+
+        // Bar Chart Logic
+        const monthlySpending = {};
+        const monthLabels = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(1);
+          d.setMonth(d.getMonth() - i);
+          const monthKey = `${d.getFullYear()}-${d.getMonth()}`;
+          monthlySpending[monthKey] = 0;
+          monthLabels.push(d.toLocaleString("default", { month: "short" }));
+        }
+
+        transactions
+          .filter((t) => t.type === "Expense")
+          .forEach((tx) => {
+            const txDate = tx.date.toDate();
+            const monthKey = `${txDate.getFullYear()}-${txDate.getMonth()}`;
+            if (monthlySpending.hasOwnProperty(monthKey)) {
+              monthlySpending[monthKey] += tx.amount - (tx.splitAmount || 0);
+            }
+          });
+
+        const barChartData = Object.values(monthlySpending);
+        const barCtx = document
+          .getElementById("monthly-chart")
+          .getContext("2d");
+        if (monthlyChart) monthlyChart.destroy();
+        monthlyChart = new Chart(barCtx, {
+          type: "bar",
+          data: {
+            labels: monthLabels,
+            datasets: [
+              {
+                label: "Total Spending",
+                data: barChartData,
+                backgroundColor: "#0b57d0",
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { callback: (value) => `₹${value / 1000}k` },
+              },
+              x: { grid: { display: false } },
+            },
+          },
+        });
+
+        // Pie Chart Logic
+        const pieChartContainer = document.getElementById(
+          "pie-chart-container"
+        );
+        const sortedCategoriesWithoutAdjustment = sortedCategories.filter(
+          (c) => !c[0].includes("Adjustment")
+        );
+        if (sortedCategoriesWithoutAdjustment.length > 0) {
+          pieChartContainer.classList.remove("hidden");
+          document.getElementById(
+            "pie-chart-title"
+          ).textContent = `Spending for ${now.toLocaleString("default", {
+            month: "long",
+          })}`;
+          const pieLabels = sortedCategoriesWithoutAdjustment.map((c) => c[0]);
+          const pieData = sortedCategoriesWithoutAdjustment.map((c) => c[1]);
+          const pieColors = [
+            "#4285F4",
+            "#DB4437",
+            "#F4B400",
+            "#0F9D58",
+            "#AB47BC",
+            "#00ACC1",
+            "#FF7043",
+            "#9E9D24",
+            "#5C6BC0",
+            "#8D6E63",
+          ];
+
+          const pieCtx = document
+            .getElementById("category-pie-chart")
+            .getContext("2d");
+          if (categoryPieChart) categoryPieChart.destroy();
+          categoryPieChart = new Chart(pieCtx, {
+            type: "doughnut",
+            data: {
+              labels: pieLabels,
+              datasets: [
+                {
+                  data: pieData,
+                  backgroundColor: pieColors,
+                  borderColor: "#fff",
+                  borderWidth: 2,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false,
+                },
+              },
+            },
+          });
+
+          // Custom Legend
+          const legendContainer = document.getElementById("pie-chart-legend");
+          legendContainer.innerHTML = pieLabels
+            .map(
+              (label, index) => `
+                                        <div class="flex items-center justify-between py-1">
+                                            <div class="flex items-center">
+                                                <span class="w-4 h-4 rounded-full mr-3" style="background-color: ${
+                                                  pieColors[
+                                                    index % pieColors.length
+                                                  ]
+                                                }"></span>
+                                                <span>${label}</span>
+                                            </div>
+                                            <span>${(
+                                              (pieData[index] /
+                                                totalMonthlySpendWithoutAdjustment) *
+                                              100
+                                            ).toFixed(1)}%</span>
+                                        </div>
+                                    `
+            )
+            .join("");
+        } else {
+          pieChartContainer.classList.add("hidden");
+        }
+      }
+
+      // --- NEW: Multi-select functions ---
+      /**
+       * Toggles the selection mode for a given page.
+       * @param {string} page - The page ID ('transactions', 'accounts', 'categories').
+       * @param {boolean} [forceOff=false] - If true, forces selection mode off.
+       */
+      function toggleSelectionMode(page, forceOff = false) {
+        selectionState.active = !selectionState.active && !forceOff;
+        selectionState.page = selectionState.active ? page : null;
+        selectionState.selectedIds.clear();
+
+        const header = document.getElementById(`${page}-header`);
+        const fab = document.getElementById(
+          page === "transactions" ? null : `add-${page.slice(0, -1)}-fab`
+        );
+
+        if (header) {
+          header
+            .querySelectorAll(".default-header-content")
+            .forEach((el) =>
+              el.classList.toggle("hidden", selectionState.active)
+            );
+          header
+            .querySelectorAll(".selection-header-content")
+            .forEach((el) =>
+              el.classList.toggle("hidden", !selectionState.active)
+            );
+        }
+
+        if (fab) {
+          fab.classList.toggle("hidden", selectionState.active);
+        }
+
+        // Re-render the list to show/hide selection indicators
+        if (page === "transactions") renderAllTransactions(allTransactions);
+        if (page === "accounts") renderAccounts(allAccounts);
+        if (page === "categories") renderCategories(allCategories);
+
+        if (selectionState.active) {
+          updateSelectionCount(page);
+        }
+      }
+
+      /**
+       * Updates the count of selected items in the header.
+       * @param {string} page - The page ID.
+       */
+      function updateSelectionCount(page) {
+        const header = document.getElementById(`${page}-header`);
+        if (!header) return;
+        const count = selectionState.selectedIds.size;
+        const countSpan = header.querySelector(".selection-count");
+        const deleteBtn = header.querySelector(".bulk-delete-btn");
+
+        if (countSpan) countSpan.textContent = `${count} selected`;
+        if (deleteBtn) deleteBtn.disabled = count === 0;
+      }
+
+      /**
+       * Handles the bulk deletion of selected items.
+       */
+      async function handleBulkDelete() {
+        const { page, selectedIds } = selectionState;
+        if (!page || selectedIds.size === 0) return;
+
+        const itemType =
+          page === "transactions" ? "transaction" : page.slice(0, -1);
+        const confirmed = await showConfirmation(
+          `Delete ${selectedIds.size} selected ${itemType}(s)? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+          const promises = [];
+          selectedIds.forEach((id) => {
+            const docRef = doc(db, "users", currentUser.uid, page, id);
+            promises.push(deleteDoc(docRef));
+          });
+
+          try {
+            await Promise.all(promises);
+          } catch (error) {
+            console.error("Error during bulk delete: ", error);
+            showError("An error occurred while deleting items.");
+          } finally {
+            toggleSelectionMode(page, true); // Exit selection mode
+          }
+        }
+      }
+
+      // --- NEW: Event listeners for selection mode ---
+      document
+        .getElementById("select-transactions-btn")
+        .addEventListener("click", () => toggleSelectionMode("transactions"));
+      document
+        .getElementById("select-accounts-btn")
+        .addEventListener("click", () => toggleSelectionMode("accounts"));
+      document
+        .getElementById("select-categories-btn")
+        .addEventListener("click", () => toggleSelectionMode("categories"));
+
+      document.querySelectorAll(".cancel-selection-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          if (selectionState.page) {
+            toggleSelectionMode(selectionState.page, true);
+          }
+        });
+      });
+
+      document
+        .querySelectorAll(".bulk-delete-btn")
+        .forEach((btn) => btn.addEventListener("click", handleBulkDelete));
+    </script>
+  </body>
+</html>
